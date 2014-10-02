@@ -11,6 +11,7 @@ namespace StatsdClient
   /// </summary>
   public class Statsd : IStatsd
   {
+    private static readonly string[] Signs = { "", "+", "-" };
     private string _prefix;
     private IOutputChannel _outputChannel;
 
@@ -143,6 +144,26 @@ namespace StatsdClient
     }
 
     /// <summary>
+    /// Increment a gauge.
+    /// </summary>
+    /// <param name="name">The metric name</param>
+    /// <param name="value">The value to add to this gauge</param>
+    public void IncrementGauge(string name, int value = 1)
+    {
+        SendMetric(MetricType.GAUGE, name, _prefix, value, sign: ValueSign.Plus);
+    }
+
+    /// <summary>
+    /// Decrement a gauge.
+    /// </summary>
+    /// <param name="name">The metric name</param>
+    /// <param name="value">The value to substract from this gauge</param>
+    public void DecrementGauge(string name, int value = 1)
+    {
+        SendMetric(MetricType.GAUGE, name, _prefix, value, sign: ValueSign.Minus);
+    }
+
+    /// <summary>
     /// Log to a set
     /// </summary>
     /// <param name="name">The metric name.</param>
@@ -187,23 +208,23 @@ namespace StatsdClient
       SendMetric(MetricType.RAW, name, String.Empty, value, epoch.HasValue ? epoch.ToString() : (string)null);
     }
 
-    private void SendMetric(string metricType, string name, string prefix, int value, string postFix = null)
+    private void SendMetric(string metricType, string name, string prefix, int value, string postFix = null, ValueSign sign = ValueSign.None)
     {
       if (value < 0)
       {
           Trace.TraceWarning(String.Format("Metric value for {0} was less than zero: {1}. Not sending.", name, value));
           return;
       }
-      SendMetric(metricType, name, prefix, value.ToString(), postFix);
+      SendMetric(metricType, name, prefix, value.ToString(), postFix, sign);
     }
 
-    private void SendMetric(string metricType, string name, string prefix, string value, string postFix = null)
+    private void SendMetric(string metricType, string name, string prefix, string value, string postFix = null, ValueSign sign = ValueSign.None)
     {
       if (String.IsNullOrEmpty(name))
       {
         throw new ArgumentNullException("name");
       }
-      _outputChannel.Send(PrepareMetric(metricType, name, prefix, value, postFix));
+      _outputChannel.Send(PrepareMetric(metricType, name, prefix, value, postFix, sign));
     }
 
     /// <summary>
@@ -214,13 +235,26 @@ namespace StatsdClient
     /// <param name="prefix"></param>
     /// <param name="value"></param>
     /// <param name="postFix">A value to append to the end of the line.</param>
+    /// <param name="sign">Metric value sign. Used only with gauges to increment/decrement its value.</param>
     /// <returns>The formatted metric</returns>
-    protected virtual string PrepareMetric(string metricType, string name, string prefix, string value, string postFix = null)
+    protected virtual string PrepareMetric(string metricType, string name, string prefix, string value, string postFix = null, ValueSign sign = ValueSign.None)
     {
-      return (String.IsNullOrEmpty(prefix) ? name : (prefix + "." + name))
-        + ":" + value
-        + "|" + metricType
-        + (postFix == null ? String.Empty : "|" + postFix);
+      var metricName = String.IsNullOrEmpty(prefix)
+          ? name
+          : String.Concat(prefix, ".", name);
+      var metricValue = String.Concat(Signs[(int)sign], value);
+      var postfixValue = postFix == null
+          ? String.Empty
+          : String.Concat("|", postFix);
+
+      return String.Concat(metricName, ":", metricValue, "|", metricType, postfixValue);
     }
+  }
+
+  public enum ValueSign
+  {
+    None,
+    Plus,
+    Minus
   }
 }

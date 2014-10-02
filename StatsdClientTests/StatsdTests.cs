@@ -33,10 +33,11 @@ namespace StatsdClientTests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentOutOfRangeException))]
-    public void LogCount_ValueIsLessThanZero_ExpectArgumentOutOfRangeException()
+    public void LogCount_ValueIsLessThanZero_NothingSend()
     {
-      _statsd.LogCount("foo", -1);
+        _statsd.LogCount("foo", -1);
+
+        _outputChannel.Verify(p => p.Send(It.IsAny<string>()), Times.Never());
     }
 
     [TestMethod]
@@ -47,10 +48,41 @@ namespace StatsdClientTests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentOutOfRangeException))]
-    public void LogGauge_ValueIsLessThanZero_ExpectArgumentOutOfRangeException()
+    [ExpectedException(typeof(ArgumentNullException))]
+    public void IncrementGauge_NameIsNull_ExpectArgumentNullException()
+    {
+        _statsd.IncrementGauge(null, _testData.NextInteger);
+    }
+
+    [TestMethod]
+    [ExpectedException(typeof(ArgumentNullException))]
+    public void DecrementGauge_NameIsNull_ExpectArgumentNullException()
+    {
+        _statsd.DecrementGauge(null, _testData.NextInteger);
+    }
+
+    [TestMethod]
+    public void LogGauge_ValueIsLessThanZero_NothingSend()
     {
       _statsd.LogGauge("foo", -1);
+
+      _outputChannel.Verify(p => p.Send(It.IsAny<string>()), Times.Never());
+    }
+
+    [TestMethod]
+    public void IncrementGauge_ValueIsLessThanZero_NothingSend()
+    {
+        _statsd.IncrementGauge("foo", -1);
+
+        _outputChannel.Verify(p => p.Send(It.IsAny<string>()), Times.Never());
+    }
+
+    [TestMethod]
+    public void DecrementGauge_ValueIsLessThanZero_NothingSend()
+    {
+        _statsd.IncrementGauge("foo", -1);
+
+        _outputChannel.Verify(p => p.Send(It.IsAny<string>()), Times.Never());
     }
 
     [TestMethod]
@@ -61,10 +93,11 @@ namespace StatsdClientTests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentOutOfRangeException))]
     public void LogTiming_ValueIsLessThanZero_ExpectArgumentOutOfRangeException()
     {
       _statsd.LogTiming("foo", -1);
+
+      _outputChannel.Verify(p => p.Send(It.IsAny<string>()), Times.Never());
     }
     #endregion
 
@@ -102,6 +135,26 @@ namespace StatsdClientTests
       _statsd.LogGauge(stat, count);
 
       _outputChannel.VerifyAll();
+    }
+
+    [TestMethod]
+    public void DecrementGauge_ValidInput_Success()
+    {
+        _outputChannel.Setup(p => p.Send("foo:-3|g")).Verifiable();
+
+        _statsd.DecrementGauge("foo", 3);
+
+        _outputChannel.VerifyAll();
+    }
+
+    [TestMethod]
+    public void IncrementGauge_ValidInput_Success()
+    {
+        _outputChannel.Setup(p => p.Send("foo:+3|g")).Verifiable();
+
+        _statsd.IncrementGauge("foo", 3);
+
+        _outputChannel.VerifyAll();
     }
 
     [TestMethod]

@@ -15,6 +15,14 @@ namespace StatsdClient
         /// </summary>
         void LogGauge(string name, int value);
         /// <summary>
+        /// Increment gauge value.
+        /// </summary>
+        void IncrementGauge(string name, int value = 1);
+        /// <summary>
+        /// Decrement gauge value;
+        /// </summary>
+        void DecrementGauge(string name, int value = 1);
+        /// <summary>
         /// Log a latency / Timing
         /// </summary>
         void LogTiming(string name, int milliseconds);
